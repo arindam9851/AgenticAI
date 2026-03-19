@@ -14,7 +14,7 @@ Users can chat naturally to find products:
 - *"Compare Yoga Mat and Dumbbell Set"*
 - *"Cheapest products in clothing"*
 
-The AI automatically decides which tool to call, queries your real product database, and replies with matching products + images.
+The AI automatically decides which tool to call, queries your real Firestore database, and replies with matching products and images.
 
 ---
 
@@ -39,14 +39,14 @@ The AI automatically decides which tool to call, queries your real product datab
 ```
 com.example.agenticai/
 │
-├── domain/                          ← Pure Kotlin, no Android deps
+├── domain/                           ← Pure Kotlin, no Android deps
 │   ├── model/
-│   │   ├── Product.kt               ← Product data model
-│   │   └── Message.kt               ← Chat message + Role enum
+│   │   ├── Product.kt                ← Product data model
+│   │   └── Message.kt                ← Chat message + Role enum
 │   ├── repository/
-│   │   └── Repositories.kt          ← Repository interfaces
+│   │   └── Repositories.kt           ← Repository interfaces
 │   └── usecase/
-│       ├── AgenticAIUseCases.kt     ← Data class bundling all use cases
+│       ├── AgenticAIUseCases.kt      ← Data class bundling all 9 use cases
 │       ├── GetProductsUseCase.kt
 │       ├── SearchProductsUseCase.kt
 │       ├── FilterByPriceUseCase.kt
@@ -57,29 +57,29 @@ com.example.agenticai/
 │       ├── CompareProductsUseCase.kt
 │       └── GetCategoriesUseCase.kt
 │
-├── data/                            ← Data sources and implementations
+├── data/                             ← Data sources and implementations
 │   ├── model/
-│   │   └── ProductDto.kt            ← Firestore DTO with domain mapper
+│   │   └── ProductDto.kt             ← Firestore DTO with domain mapper
 │   ├── source/remote/
 │   │   ├── FirestoreProductSource.kt
 │   │   ├── RemoteConfigSource.kt
-│   │   └── GroqAgentClient.kt       ← Groq API + agentic loop
+│   │   └── GroqAgentClient.kt        ← Groq API + agentic loop
 │   └── repository/
 │       └── RepositoryImpl.kt
 │
-├── presentation/                    ← UI layer
+├── presentation/                     ← UI layer
 │   ├── chat/
-│   │   ├── ChatContract.kt          ← MVI: State, Intent, Effect
+│   │   ├── ChatContract.kt           ← MVI: State, Intent, Effect
 │   │   ├── ChatViewModel.kt
 │   │   └── ChatScreen.kt
 │   ├── component/
-│   │   └── Components.kt            ← ChatBubble, ProductCard, Chips
+│   │   └── Components.kt             ← ChatBubble, ProductCard, Chips
 │   └── theme/
 │       └── Theme.kt
 │
 └── core/
     └── di/
-        └── AppModule.kt             ← Hilt dependency injection
+        └── AppModule.kt              ← Hilt dependency injection
 ```
 
 ---
@@ -113,63 +113,104 @@ ChatEffect.ScrollToBottom (one-time event)
 ### Step 1 — Clone the project
 
 ```bash
-git clone https://github.com/yourusername/AgenticAI.git
+git clone https://github.com/arindam9851/AgenticAI.git
 cd AgenticAI
 ```
 
 ---
 
-### Step 2 — Firebase Setup
+### Step 2 — Gradle Configuration
 
-#### 2a. Create Firebase project
-1. Go to [console.firebase.google.com](https://console.firebase.google.com)
-2. Click **Add Project**
-3. Follow the setup wizard
+#### `libs.versions.toml` — use these exact versions:
 
-#### 2b. Add Android app to Firebase
-1. In Firebase Console → click **Add App** → choose Android
+```toml
+[versions]
+agp                      = "9.0.1"
+kotlin                   = "2.1.20"
+ksp                      = "2.1.20-1.0.32"
+hiltAndroid              = "2.51.1"
+hiltNavigationCompose    = "1.3.0"
+firebaseBom              = "34.0.0"
+composeBom               = "2024.06.00"
+coilCompose              = "2.7.0"
+okhttp                   = "4.12.0"
+googleServices           = "4.4.2"
+kotlinxCoroutinesAndroid = "1.8.1"
+
+[plugins]
+android-application = { id = "com.android.application",             version.ref = "agp" }
+kotlin-android      = { id = "org.jetbrains.kotlin.android",        version.ref = "kotlin" }
+kotlin-compose      = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp                 = { id = "com.google.devtools.ksp",             version.ref = "ksp" }
+hilt                = { id = "com.google.dagger.hilt.android",      version.ref = "hiltAndroid" }
+google-services     = { id = "com.google.gms.google-services",      version.ref = "googleServices" }
+```
+
+
+
+> This is required for AGP 9.0 + KSP compatibility.
+
+---
+
+### Step 3 — Firebase Setup
+
+#### 3a. Create Firebase project
+1. Go to **console.firebase.google.com**
+2. Click **Add Project** → follow the wizard
+
+#### 3b. Add Android app
+1. Firebase Console → **Add App** → Android
 2. Enter package name: `com.example.agenticai`
 3. Download `google-services.json`
-4. Place it in the `app/` folder of the project
+4. Place it in the `app/` folder
 
-#### 2c. Enable Firestore
+#### 3c. Enable Firestore
 1. Firebase Console → **Firestore Database**
-2. Click **Create Database**
-3. Choose **Production mode**
-4. Select a region close to you (e.g. `europe-west1` for Sweden)
-5. Click **Done**
+2. Click **Create Database** → Production mode
+3. Select region e.g. `europe-west1` for Sweden
 
-#### 2d. Enable Remote Config
+#### 3d. Enable Remote Config
 1. Firebase Console → **Remote Config**
-2. Click **Add parameter**
-3. Add this parameter:
+2. Click **Add parameter** and add:
 
-| Parameter Key | Value |
+| Key | Value |
 |---|---|
 | `groq_api_key` | `gsk_your_groq_key_here` |
 
-4. Click **Publish changes**
+3. Click **Publish changes**
+
+> **Important:** Make sure you click **Publish** — unpublished changes are not fetched by the app.
 
 ---
 
-### Step 3 — Get Groq API Key (Free)
+### Step 4 — Get Groq API Key (Free)
 
-1. Go to [console.groq.com](https://console.groq.com)
-2. Sign up with Google — no credit card needed
+1. Go to **console.groq.com**
+2. Sign up free — no credit card needed
 3. Click **API Keys → Create API Key**
-4. Copy the key (starts with `gsk_...`)
-5. Paste it as the value of `groq_api_key` in Firebase Remote Config
+4. Copy key (starts with `gsk_...`)
+5. Paste into Firebase Remote Config as `groq_api_key`
 
-**Free limits:** 14,400 requests/day, 6,000 tokens/minute
+**Free limits:** 14,400 requests/day
+
+#### Active models used (with fallback):
+```kotlin
+private val MODELS = listOf(
+    "llama-3.3-70b-versatile",                   // primary
+    "llama-3.1-8b-instant",                      // fallback 1
+    "meta-llama/llama-4-scout-17b-16e-instruct"  // fallback 2
+)
+```
+
+> **Note:** `gemma2-9b-it` was deprecated August 2025. `mixtral-8x7b-32768` was deprecated March 2025. Do not use these.
 
 ---
 
-### Step 4 — Get Cloudinary Account (Free)
+### Step 5 — Get Cloudinary Account (Free)
 
-1. Go to [cloudinary.com](https://cloudinary.com)
+1. Go to **cloudinary.com**
 2. Click **Sign Up Free** — no credit card needed
-3. After signup go to your **Dashboard**
-4. Note down:
+3. From your Dashboard note down:
    - `Cloud Name`
    - `API Key`
    - `API Secret`
@@ -178,101 +219,69 @@ cd AgenticAI
 
 ---
 
-### Step 5 — Upload Products to Firebase
+### Step 6 — Upload Products to Firebase
 
-You need Python installed (comes pre-installed on Mac).
-
-#### 5a. Prepare your files
-
-Create a folder on your Desktop called `firebase_upload` with:
+#### 6a. Prepare your folder
 
 ```
 firebase_upload/
-  ├── upload_products.py      ← upload script
-  ├── products.csv            ← 50 product CSV file
-  └── serviceAccountKey.json  ← Firebase service account key
+  ├── upload_products.py
+  ├── products.csv
+  └── serviceAccountKey.json
 ```
 
 **Get `serviceAccountKey.json`:**
 1. Firebase Console → ⚙️ **Project Settings**
-2. Click **Service Accounts** tab
-3. Click **Generate new private key**
-4. Save as `serviceAccountKey.json` in the folder
+2. **Service Accounts** → **Generate new private key**
+3. Save as `serviceAccountKey.json`
 
-#### 5b. Edit `upload_products.py`
-
-Open the script and fill in your Cloudinary credentials:
+#### 6b. Edit `upload_products.py`
 
 ```python
-CLOUDINARY_CLOUD   = "your_cloud_name"    # from Cloudinary dashboard
-CLOUDINARY_API_KEY = "your_api_key"       # from Cloudinary dashboard
-CLOUDINARY_SECRET  = "your_api_secret"    # from Cloudinary dashboard
+CLOUDINARY_CLOUD   = "your_cloud_name"
+CLOUDINARY_API_KEY = "your_api_key"
+CLOUDINARY_SECRET  = "your_api_secret"
 ```
 
-#### 5c. Install dependencies
-
-Open Terminal and run:
+#### 6c. Install dependencies (Mac/Linux)
 
 ```bash
 pip3 install firebase-admin pandas requests cloudinary
 ```
 
-#### 5d. Run the script
+#### 6d. Run the script
 
 ```bash
 cd ~/Desktop/firebase_upload
 python3 upload_products.py
 ```
 
-The script will:
-1. Read all 50 products from `products.csv`
-2. Download a free image for each product from Picsum Photos
-3. Upload each image to Cloudinary
-4. Save product data + image URL to Firestore
-
-Takes about 3–5 minutes. You'll see live progress:
-
-```
-[1/50] Samsung Galaxy Buds 2
-  Image downloaded ✓
-  Uploaded to Cloudinary ✓
-  Saved to Firestore ✓
-```
+The script auto-downloads free images from Picsum Photos, uploads them to Cloudinary, and saves everything to Firestore. Takes 3–5 minutes.
 
 ---
 
-### Step 6 — Firestore Data Structure
+### Step 7 — Remote Config during Development
 
-After the script runs, your Firestore will look like this:
 
-```
-products/
-  samsung_galaxy_buds_2/
-    name:        "Samsung Galaxy Buds 2"
-    category:    "electronics"
-    price:       449
-    description: "Wireless earbuds with active noise cancellation"
-    imageUrl:    "https://res.cloudinary.com/.../samsung_galaxy_buds2.jpg"
-    inStock:     true
-    rating:      4.3
-    createdAt:   timestamp
-```
+
+
+> Upload you key to remote config.
 
 ---
 
-### Step 7 — Run the App
+### Step 8 — Run the App
 
-1. Open the project in **Android Studio**
-2. Make sure `google-services.json` is in the `app/` folder
-3. Click **Sync Now** when prompted
-4. Connect your Android device or start an emulator
-5. Click **Run ▶**
+1. Open project in **Android Studio**
+2. Place `google-services.json` in `app/` folder
+3. Click **Sync Now**
+4. Add to `gradle.properties`: `android.disallowKotlinSourceSets=false`
+5. Run on device or emulator
 
 ---
 
 ## AI Tools Available
 
-The AI agent has 8 tools it can call automatically:
+The AI agent has 8 tools it automatically decides to call:
 
 | Tool | What it does | Example query |
 |---|---|---|
@@ -284,6 +293,35 @@ The AI agent has 8 tools it can call automatically:
 | `sort_by_price` | Sort cheap/expensive | *"Cheapest products"* |
 | `compare_products` | Side by side compare | *"Compare X and Y"* |
 | `get_categories` | List all categories | *"What categories do you have?"* |
+
+> **Note:** `filter_by_stock` uses `string` type (`"true"`/`"false"`) not `boolean` in the tool schema. This is intentional — Groq LLMs sometimes pass boolean values as strings, and using string type with safe parsing handles both cases correctly.
+
+---
+
+## UI Behaviour
+
+- **On launch** — suggestion chips shown centered in the screen with a welcome message
+- **After first message** — chips move to a persistent scrollable row above the input field and stay there for the entire conversation
+
+---
+
+## AgenticAIUseCases
+
+All use cases are bundled into one data class for clean Hilt injection:
+
+```kotlin
+data class AgenticAIUseCases @Inject constructor(
+    val getProducts: GetProductsUseCase,
+    val searchProducts: SearchProductsUseCase,
+    val filterByPrice: FilterByPriceUseCase,
+    val filterByCategory: FilterByCategoryUseCase,
+    val filterByStock: FilterByStockUseCase,
+    val sortByRating: SortByRatingUseCase,
+    val sortByPrice: SortByPriceUseCase,
+    val compareProducts: CompareProductsUseCase,
+    val getCategories: GetCategoriesUseCase
+)
+```
 
 ---
 
@@ -300,13 +338,11 @@ The AI agent has 8 tools it can call automatically:
 
 ---
 
----
-
-## Free Tier Limits Summary
+## Free Tier Limits
 
 | Service | Free Limit | What happens when exceeded |
 |---|---|---|
-| Groq API | 14,400 req/day | Returns 429 error — resets next day |
+| Groq API | 14,400 req/day | Returns 429 — resets next day, app auto-switches model |
 | Firestore reads | 50,000/day | Returns permission error |
 | Firestore writes | 20,000/day | Returns permission error |
 | Cloudinary storage | 25 GB | Upload fails |
@@ -315,12 +351,14 @@ The AI agent has 8 tools it can call automatically:
 
 ---
 
+
+
 ## Adding New Products
 
-1. Add new rows to `products.csv`
+1. Add rows to `products.csv`
 2. Run `python3 upload_products.py` again
-3. It will skip existing products and only upload new ones
-4. Restart the app — new products load automatically
+3. Script overwrites existing docs and uploads new ones
+4. Restart the app — new products load on next launch
 
 ---
 
@@ -328,15 +366,15 @@ The AI agent has 8 tools it can call automatically:
 
 - [Jetpack Compose](https://developer.android.com/compose) — UI
 - [Hilt](https://dagger.dev/hilt/) — Dependency Injection
-- [Groq](https://console.groq.com) — Free LLM API
-- [Firebase Firestore](https://firebase.google.com/products/firestore) — Database
-- [Firebase Remote Config](https://firebase.google.com/products/remote-config) — API key storage
-- [Cloudinary](https://cloudinary.com) — Image hosting
-- [Coil](https://coil-kt.github.io/coil/) — Image loading
-- [OkHttp](https://square.github.io/okhttp/) — HTTP client
+- [Groq](https://console.groq.com) — Free LLM API (Llama 3.3)
+- [Firebase Firestore](https://firebase.google.com/products/firestore) — Product database
+- [Firebase Remote Config](https://firebase.google.com/products/remote-config) — Secure API key storage
+- [Cloudinary](https://cloudinary.com) — Product image hosting
+- [Coil](https://coil-kt.github.io/coil/) — Image loading in Compose
+- [OkHttp](https://square.github.io/okhttp/) — HTTP client for Groq API
 
 ---
 
 ## License
 
-Free to use and modify. Happy Coding 😄
+Free to use and modify. Happy Coding! 😄
