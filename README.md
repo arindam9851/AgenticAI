@@ -375,6 +375,5 @@ data class AgenticAIUseCases @Inject constructor(
 
 ---
 
-## License
 
 Free to use and modify. Happy Coding! 😄
