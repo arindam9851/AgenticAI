@@ -2,6 +2,7 @@ package com.example.agenticai.data.source.remote
 
 
 import android.util.Log
+import com.example.agenticai.domain.model.CartItem
 import com.example.agenticai.domain.model.Message
 import com.example.agenticai.domain.model.Product
 import com.example.agenticai.domain.model.Role
@@ -56,6 +57,12 @@ class GroqAgentClient @Inject constructor(
         - "most expensive", "highest price"            → sort_by_price(order="desc")
         - "under X SEK", "below X SEK"                → filter_by_price(max_price=X)
         - "search X", "find X", "show me X"           → search_products(keyword=X)
+        - "add X to cart", "I want X", "buy X"        → add_to_cart(product_name=X)
+        - "remove X from cart", "delete X"            → remove_from_cart(product_name=X)
+        - "show cart", "what's in my cart"            → view_cart()
+        - "clear cart", "empty my cart"               → clear_cart()
+        - "place order", "checkout", "buy everything" → place_order()
+        - "find best X and buy it"                    → filter/sort THEN add_to_cart THEN place_order
     """.trimIndent()
 
     private fun buildTools(): JSONArray = JSONArray().apply {
@@ -163,9 +170,52 @@ class GroqAgentClient @Inject constructor(
             },
             listOf()
         ))
+        // 9. Add to cart
+        put(tool(
+            "add_to_cart",
+            "Add a product to the cart by name. Use when user says 'add X', 'buy X', 'I want X'",
+            JSONObject().apply {
+                put("product_name", param("string", "Product name to add to cart"))
+            },
+            listOf("product_name")
+        ))
+
+// 10. Remove from cart
+        put(tool(
+            "remove_from_cart",
+            "Remove a specific product from the cart by name",
+            JSONObject().apply {
+                put("product_name", param("string", "Product name to remove from cart"))
+            },
+            listOf("product_name")
+        ))
+
+// 11. View cart
+        put(tool(
+            "view_cart",
+            "Show all items currently in the cart with quantities and total price",
+            JSONObject().apply { put("properties", JSONObject()) },
+            listOf()
+        ))
+
+// 12. Clear cart
+        put(tool(
+            "clear_cart",
+            "Remove all items from the cart",
+            JSONObject().apply { put("properties", JSONObject()) },
+            listOf()
+        ))
+
+// 13. Place order
+        put(tool(
+            "place_order",
+            "Place an order for all items in cart, clear the cart and confirm order",
+            JSONObject().apply { put("properties", JSONObject()) },
+            listOf()
+        ))
     }
 
-    private fun executeTool(
+    private suspend fun executeTool(
         name: String,
         args: JSONObject,
         products: List<Product>
@@ -253,6 +303,116 @@ class GroqAgentClient @Inject constructor(
             "get_categories" -> {
                 val cats = useCases.getCategories(products)
                 Pair("Available categories: ${cats.joinToString(", ")}", emptyList())
+            }
+            "add_to_cart" -> {
+                val productName = args.optString("product_name", "")
+                val product     = products.firstOrNull {
+                    it.name.contains(productName, ignoreCase = true)
+                }
+                if (product == null) {
+                    Pair("Product '$productName' not found in catalog.", emptyList())
+                } else {
+                    val cartItem = CartItem(
+                        id = product.id,
+                        name = product.name,
+                        category = product.category,
+                        price = product.price,
+                        imageUrl = product.imageUrl,
+                        quantity = 1
+                    )
+                    useCases.addToCart(cartItem).fold(
+                        onSuccess = {
+                            Pair("${product.name} (${product.price} SEK) added to cart ✓", listOf(product))
+                        },
+                        onFailure = { e ->
+                            Pair("Failed to add to cart: ${e.message}", emptyList())
+                        }
+                    )
+                }
+            }
+
+            "remove_from_cart" -> {
+                val productName = args.optString("product_name", "")
+                useCases.getCart().fold(
+                    onSuccess = { cartItems ->
+                        val item = cartItems.firstOrNull {
+                            it.name.contains(productName, ignoreCase = true)
+                        }
+                        if (item == null) {
+                            Pair("'$productName' not found in your cart.", emptyList())
+                        } else {
+                            useCases.removeFromCart(item.id).fold(
+                                onSuccess = { Pair("${item.name} removed from cart ✓", emptyList()) },
+                                onFailure = { e -> Pair("Failed to remove: ${e.message}", emptyList()) }
+                            )
+                        }
+                    },
+                    onFailure = { e -> Pair("Could not access cart: ${e.message}", emptyList()) }
+                )
+            }
+
+            "view_cart" -> {
+                useCases.getCart().fold(
+                    onSuccess = { cartItems ->
+                        if (cartItems.isEmpty()) {
+                            Pair("Your cart is empty.", emptyList())
+                        } else {
+                            val total = cartItems.sumOf { it.price * it.quantity }
+                            val text  = buildString {
+                                appendLine("Cart (${cartItems.size} item${if (cartItems.size > 1) "s" else ""}):")
+                                cartItems.forEach {
+                                    appendLine("• ${it.name} x${it.quantity} — ${it.price * it.quantity} SEK")
+                                }
+                                append("Total: $total SEK")
+                            }
+                            val asProducts = cartItems.map { cartItem ->
+                                products.firstOrNull { it.name.equals(cartItem.name, ignoreCase = true) }
+                                    ?: Product(
+                                        id       = cartItem.id,
+                                        name     = cartItem.name,
+                                        category = cartItem.category,
+                                        price    = cartItem.price,
+                                        imageUrl = cartItem.imageUrl
+                                    )
+                            }
+                            Pair(text, asProducts)
+                        }
+                    },
+                    onFailure = { e -> Pair("Could not load cart: ${e.message}", emptyList()) }
+                )
+            }
+
+            "clear_cart" -> {
+                useCases.clearCart().fold(
+                    onSuccess = { Pair("Cart cleared ✓", emptyList()) },
+                    onFailure = { e -> Pair("Failed to clear cart: ${e.message}", emptyList()) }
+                )
+            }
+
+            "place_order" -> {
+                useCases.getCart().fold(
+                    onSuccess = { cartItems ->
+                        if (cartItems.isEmpty()) {
+                            Pair("Your cart is empty — nothing to order.", emptyList())
+                        } else {
+                            val total = cartItems.sumOf { it.price * it.quantity }
+                            useCases.placeOrder(cartItems).fold(
+                                onSuccess = { orderId ->
+                                    Pair(
+                                        "Order placed! 🎉\n" +
+                                                "Order ID: ${orderId.take(8)}...\n" +
+                                                "Total: $total SEK\n" +
+                                                "Status: Confirmed ✓\n" +
+                                                "(Demo — no real payment)",
+                                        emptyList()
+                                    )
+                                },
+                                onFailure = { e -> Pair("Failed to place order: ${e.message}", emptyList()) }
+                            )
+                        }
+                    },
+                    onFailure = { e -> Pair("Could not access cart: ${e.message}", emptyList()) }
+                )
             }
 
             else -> Pair("Unknown tool: $name", emptyList())
