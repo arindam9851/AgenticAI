@@ -1,9 +1,13 @@
 package com.example.agenticai.core.di
 
 
+import com.example.agenticai.data.repository.CartRepositoryImpl
 import com.example.agenticai.data.repository.ConfigRepositoryImpl
+import com.example.agenticai.data.repository.OrderRepositoryImpl
 import com.example.agenticai.data.repository.ProductRepositoryImpl
+import com.example.agenticai.domain.repository.CartRepository
 import com.example.agenticai.domain.repository.ConfigRepository
+import com.example.agenticai.domain.repository.OrderRepository
 import com.example.agenticai.domain.repository.ProductRepository
 import com.example.agenticai.domain.usecase.*
 import com.google.firebase.Firebase
@@ -41,18 +45,36 @@ object FirebaseModule {
         sortByRating: SortByRatingUseCase,
         sortByPrice: SortByPriceUseCase,
         compareProducts: CompareProductsUseCase,
-        getCategories: GetCategoriesUseCase
+        getCategories: GetCategoriesUseCase,
+        //Cart
+        getCartUseCase: GetCartUseCase,
+        addToCartUseCase: AddToCartUseCase,
+        removeFromCartUseCase: RemoveFromCartUseCase,
+        updateCartQtyUseCase: UpdateCartQtyUseCase,
+        clearCartUseCase: ClearCartUseCase,
+        placeOrderUseCase: PlaceOrderUseCase,
+        //Order
+        getOrdersUseCase: GetOrdersUseCase
     ): AgenticAIUseCases =
         AgenticAIUseCases(
-            getProducts,
-            searchProducts,
-            filterByPrice,
-            filterByCategory,
-            filterByStock,
-            sortByRating,
-            sortByPrice,
-            compareProducts,
-            getCategories
+            getProducts = getProducts,
+            searchProducts = searchProducts,
+            filterByPrice = filterByPrice,
+            filterByCategory = filterByCategory,
+            filterByStock = filterByStock,
+            sortByRating = sortByRating,
+            sortByPrice = sortByPrice,
+            compareProducts = compareProducts,
+            getCategories = getCategories,
+            //Cart
+            getCart = getCartUseCase,
+            addToCart = addToCartUseCase,
+            removeFromCart = removeFromCartUseCase,
+            updateQty = updateCartQtyUseCase,
+            clearCart = clearCartUseCase,
+            placeOrder = placeOrderUseCase,
+            //Order
+            getOrders = getOrdersUseCase
         )
 }
 
@@ -71,4 +93,22 @@ abstract class RepositoryModule {
     abstract fun bindConfigRepository(
         impl: ConfigRepositoryImpl
     ): ConfigRepository
+}
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class CartRepositoryModule {
+    @Binds
+    @Singleton
+    abstract fun bindCartRepository(impl: CartRepositoryImpl): CartRepository
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class OrderModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindOrderRepository(
+        impl: OrderRepositoryImpl
+    ): OrderRepository
 }
