@@ -1,4 +1,4 @@
-package com.example.agenticai.domain.usecase
+package com.example.agenticai.domain.usecase.agentic_ai_usecase
 
 import com.example.agenticai.domain.model.Product
 import javax.inject.Inject

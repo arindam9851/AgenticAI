@@ -2,7 +2,8 @@ package com.example.agenticai.presentation.cart
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.agenticai.domain.usecase.AgenticAIUseCases
+import com.example.agenticai.domain.usecase.agentic_ai_usecase.AgenticAIUseCases
+import com.example.agenticai.domain.usecase.cart_usecase.CartAllUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -11,7 +12,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CartViewModel @Inject constructor(
-    private val useCases: AgenticAIUseCases   // ← only dependency needed
+    private val useCases: CartAllUseCases   // ← only dependency needed
 ) : ViewModel() {
 
     private val _state  = MutableStateFlow(CartState())

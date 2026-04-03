@@ -7,8 +7,7 @@ import com.example.agenticai.data.source.remote.GroqAgentClient
 import com.example.agenticai.domain.model.Message
 import com.example.agenticai.domain.model.Role
 import com.example.agenticai.domain.repository.ConfigRepository
-import com.example.agenticai.domain.usecase.AgenticAIUseCases
-import com.example.agenticai.domain.usecase.GetProductsUseCase
+import com.example.agenticai.domain.usecase.agentic_ai_usecase.AgenticAIUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*

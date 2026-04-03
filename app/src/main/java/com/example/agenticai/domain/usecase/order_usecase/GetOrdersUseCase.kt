@@ -1,4 +1,4 @@
-package com.example.agenticai.domain.usecase
+package com.example.agenticai.domain.usecase.order_usecase
 
 import com.example.agenticai.domain.model.Order
 import com.example.agenticai.domain.repository.OrderRepository

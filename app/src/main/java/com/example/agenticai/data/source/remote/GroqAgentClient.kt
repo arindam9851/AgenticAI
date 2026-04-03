@@ -6,7 +6,8 @@ import com.example.agenticai.domain.model.CartItem
 import com.example.agenticai.domain.model.Message
 import com.example.agenticai.domain.model.Product
 import com.example.agenticai.domain.model.Role
-import com.example.agenticai.domain.usecase.AgenticAIUseCases
+import com.example.agenticai.domain.usecase.agentic_ai_usecase.AgenticAIUseCases
+import com.example.agenticai.domain.usecase.cart_usecase.CartAllUseCases
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -21,7 +22,8 @@ import javax.inject.Singleton
 
 @Singleton
 class GroqAgentClient @Inject constructor(
-    private val useCases: AgenticAIUseCases
+    private val agenticAiUseCases: AgenticAIUseCases,
+    private val cartUseCase: CartAllUseCases
 ) {
     private val _url = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -87,132 +89,170 @@ class GroqAgentClient @Inject constructor(
             }
 
         // 1. Search by keyword
-        put(tool(
-            "search_products",
-            "Search products by keyword in name, description or category",
-            JSONObject().apply {
-                put("keyword", param("string", "Search keyword e.g. 'yoga', 'speaker'"))
-            },
-            listOf("keyword")
-        ))
+        put(
+            tool(
+                "search_products",
+                "Search products by keyword in name, description or category",
+                JSONObject().apply {
+                    put("keyword", param("string", "Search keyword e.g. 'yoga', 'speaker'"))
+                },
+                listOf("keyword")
+            )
+        )
 
         // 2. Filter by max price
-        put(tool(
-            "filter_by_price",
-            "Filter products under a max price in SEK with optional category",
-            JSONObject().apply {
-                put("max_price", param("integer", "Maximum price in SEK"))
-                put("category",  param("string",  "Optional category filter"))
-            },
-            listOf("max_price")
-        ))
+        put(
+            tool(
+                "filter_by_price",
+                "Filter products under a max price in SEK with optional category",
+                JSONObject().apply {
+                    put("max_price", param("integer", "Maximum price in SEK"))
+                    put("category", param("string", "Optional category filter"))
+                },
+                listOf("max_price")
+            )
+        )
 
         // 3. Filter by category
-        put(tool(
-            "filter_by_category",
-            "Get all products in a specific category: electronics, fitness, clothing, footwear, kitchen, home",
-            JSONObject().apply {
-                put("category", param("string", "Category name"))
-            },
-            listOf("category")
-        ))
+        put(
+            tool(
+                "filter_by_category",
+                "Get all products in a specific category: electronics, fitness, clothing, footwear, kitchen, home",
+                JSONObject().apply {
+                    put("category", param("string", "Category name"))
+                },
+                listOf("category")
+            )
+        )
 
         // 4. Filter by stock
-        put(tool(
-            "filter_by_stock",
-            "Filter by stock status. Use in_stock='false' for sold out, in_stock='true' for available",
-            JSONObject().apply {
-                put("in_stock", param("string", "'true' = available/in stock, 'false' = sold out/unavailable"))
-                put("category", param("string", "Optional category filter"))
-            },
-            listOf("in_stock")
-        ))
+        put(
+            tool(
+                "filter_by_stock",
+                "Filter by stock status. Use in_stock='false' for sold out, in_stock='true' for available",
+                JSONObject().apply {
+                    put(
+                        "in_stock",
+                        param(
+                            "string",
+                            "'true' = available/in stock, 'false' = sold out/unavailable"
+                        )
+                    )
+                    put("category", param("string", "Optional category filter"))
+                },
+                listOf("in_stock")
+            )
+        )
 
         // 5. Sort by rating
-        put(tool(
-            "sort_by_rating",
-            "Sort products by rating. order=asc for lowest/worst rated, order=desc for highest/best rated",
-            JSONObject().apply {
-                put("order",    param("string", "'asc' = lowest rated first, 'desc' = highest rated first"))
-                put("category", param("string", "Optional category filter"))
-            },
-            listOf("order")
-        ))
+        put(
+            tool(
+                "sort_by_rating",
+                "Sort products by rating. order=asc for lowest/worst rated, order=desc for highest/best rated",
+                JSONObject().apply {
+                    put(
+                        "order",
+                        param("string", "'asc' = lowest rated first, 'desc' = highest rated first")
+                    )
+                    put("category", param("string", "Optional category filter"))
+                },
+                listOf("order")
+            )
+        )
 
         // 6. Sort by price
-        put(tool(
-            "sort_by_price",
-            "Sort products by price. order=asc for cheapest first, order=desc for most expensive first",
-            JSONObject().apply {
-                put("order",    param("string", "'asc' = cheapest first, 'desc' = most expensive first"))
-                put("category", param("string", "Optional category filter"))
-            },
-            listOf("order")
-        ))
+        put(
+            tool(
+                "sort_by_price",
+                "Sort products by price. order=asc for cheapest first, order=desc for most expensive first",
+                JSONObject().apply {
+                    put(
+                        "order",
+                        param("string", "'asc' = cheapest first, 'desc' = most expensive first")
+                    )
+                    put("category", param("string", "Optional category filter"))
+                },
+                listOf("order")
+            )
+        )
 
         // 7. Compare two products
-        put(tool(
-            "compare_products",
-            "Compare two products side by side by name",
-            JSONObject().apply {
-                put("product1", param("string", "First product name"))
-                put("product2", param("string", "Second product name"))
-            },
-            listOf("product1", "product2")
-        ))
+        put(
+            tool(
+                "compare_products",
+                "Compare two products side by side by name",
+                JSONObject().apply {
+                    put("product1", param("string", "First product name"))
+                    put("product2", param("string", "Second product name"))
+                },
+                listOf("product1", "product2")
+            )
+        )
 
         // 8. List all categories
-        put(tool(
-            "get_categories",
-            "List all available product categories in the store",
-            JSONObject().apply {
-                put("properties", JSONObject())
-            },
-            listOf()
-        ))
+        put(
+            tool(
+                "get_categories",
+                "List all available product categories in the store",
+                JSONObject().apply {
+                    put("properties", JSONObject())
+                },
+                listOf()
+            )
+        )
         // 9. Add to cart
-        put(tool(
-            "add_to_cart",
-            "Add a product to the cart by name. Use when user says 'add X', 'buy X', 'I want X'",
-            JSONObject().apply {
-                put("product_name", param("string", "Product name to add to cart"))
-            },
-            listOf("product_name")
-        ))
+        put(
+            tool(
+                "add_to_cart",
+                "Add a product to the cart by name. Use when user says 'add X', 'buy X', 'I want X'",
+                JSONObject().apply {
+                    put("product_name", param("string", "Product name to add to cart"))
+                },
+                listOf("product_name")
+            )
+        )
 
 // 10. Remove from cart
-        put(tool(
-            "remove_from_cart",
-            "Remove a specific product from the cart by name",
-            JSONObject().apply {
-                put("product_name", param("string", "Product name to remove from cart"))
-            },
-            listOf("product_name")
-        ))
+        put(
+            tool(
+                "remove_from_cart",
+                "Remove a specific product from the cart by name",
+                JSONObject().apply {
+                    put("product_name", param("string", "Product name to remove from cart"))
+                },
+                listOf("product_name")
+            )
+        )
 
 // 11. View cart
-        put(tool(
-            "view_cart",
-            "Show all items currently in the cart with quantities and total price",
-            JSONObject().apply { put("properties", JSONObject()) },
-            listOf()
-        ))
+        put(
+            tool(
+                "view_cart",
+                "Show all items currently in the cart with quantities and total price",
+                JSONObject().apply { put("properties", JSONObject()) },
+                listOf()
+            )
+        )
 
 // 12. Clear cart
-        put(tool(
-            "clear_cart",
-            "Remove all items from the cart",
-            JSONObject().apply { put("properties", JSONObject()) },
-            listOf()
-        ))
+        put(
+            tool(
+                "clear_cart",
+                "Remove all items from the cart",
+                JSONObject().apply { put("properties", JSONObject()) },
+                listOf()
+            )
+        )
 
 // 13. Place order
-        put(tool(
-            "place_order",
-            "Place an order for all items in cart, clear the cart and confirm order",
-            JSONObject().apply { put("properties", JSONObject()) },
-            listOf()
-        ))
+        put(
+            tool(
+                "place_order",
+                "Place an order for all items in cart, clear the cart and confirm order",
+                JSONObject().apply { put("properties", JSONObject()) },
+                listOf()
+            )
+        )
     }
 
     private suspend fun executeTool(
@@ -224,8 +264,8 @@ class GroqAgentClient @Inject constructor(
 
             "search_products" -> {
                 val keyword = args.optString("keyword", "")
-                val result  = useCases.searchProducts(products, keyword)
-                val text    = if (result.isEmpty()) "No products found for '$keyword'"
+                val result = agenticAiUseCases.searchProducts(products, keyword)
+                val text = if (result.isEmpty()) "No products found for '$keyword'"
                 else formatProducts(result)
                 Pair(text, result)
             }
@@ -233,16 +273,16 @@ class GroqAgentClient @Inject constructor(
             "filter_by_price" -> {
                 val maxPrice = args.optInt("max_price", Int.MAX_VALUE)
                 val category = args.optString("category", "")
-                val result   = useCases.filterByPrice(products, maxPrice, category)
-                val text     = if (result.isEmpty()) "No products found under $maxPrice SEK"
+                val result = agenticAiUseCases.filterByPrice(products, maxPrice, category)
+                val text = if (result.isEmpty()) "No products found under $maxPrice SEK"
                 else formatProducts(result)
                 Pair(text, result)
             }
 
             "filter_by_category" -> {
                 val category = args.optString("category", "")
-                val result   = useCases.filterByCategory(products, category)
-                val text     = if (result.isEmpty()) "No products in '$category'"
+                val result = agenticAiUseCases.filterByCategory(products, category)
+                val text = if (result.isEmpty()) "No products in '$category'"
                 else formatProducts(result)
                 Pair(text, result)
             }
@@ -250,26 +290,26 @@ class GroqAgentClient @Inject constructor(
             "filter_by_stock" -> {
                 val inStock = when (val inStockRaw = args.opt("in_stock")) {
                     is Boolean -> inStockRaw
-                    is String  -> inStockRaw.trim().lowercase() == "true"
-                    else       -> true
+                    is String -> inStockRaw.trim().lowercase() == "true"
+                    else -> true
                 }
                 val category = args.optString("category", "")
-                val result   = useCases.filterByStock(products, inStock, category)
+                val result = agenticAiUseCases.filterByStock(products, inStock, category)
                 val text = when {
                     result.isEmpty() && !inStock -> "No sold out products found."
-                    result.isEmpty()             -> "No products found."
+                    result.isEmpty() -> "No products found."
                     !inStock -> "Sold out (${result.size}):\n${formatProducts(result)}"
-                    else     -> "In stock (${result.size}):\n${formatProducts(result)}"
+                    else -> "In stock (${result.size}):\n${formatProducts(result)}"
                 }
                 Pair(text, result)
             }
 
             "sort_by_rating" -> {
-                val order    = args.optString("order", "desc")
+                val order = args.optString("order", "desc")
                 val category = args.optString("category", "")
-                val result   = useCases.sortByRating(
-                    products  = products,
-                    category  = category,
+                val result = agenticAiUseCases.sortByRating(
+                    products = products,
+                    category = category,
                     ascending = order == "asc"
                 )
                 val text = if (result.isEmpty()) "No products found"
@@ -278,11 +318,11 @@ class GroqAgentClient @Inject constructor(
             }
 
             "sort_by_price" -> {
-                val order    = args.optString("order", "asc")
+                val order = args.optString("order", "asc")
                 val category = args.optString("category", "")
-                val result   = useCases.sortByPrice(
-                    products  = products,
-                    category  = category,
+                val result = agenticAiUseCases.sortByPrice(
+                    products = products,
+                    category = category,
                     ascending = order == "asc"
                 )
                 val text = if (result.isEmpty()) "No products found"
@@ -291,22 +331,23 @@ class GroqAgentClient @Inject constructor(
             }
 
             "compare_products" -> {
-                val name1    = args.optString("product1", "")
-                val name2    = args.optString("product2", "")
-                val (p1, p2) = useCases.compareProducts(products, name1, name2)
-                val result   = listOfNotNull(p1, p2)
-                val text     = if (p1 == null || p2 == null) "One or both products not found"
+                val name1 = args.optString("product1", "")
+                val name2 = args.optString("product2", "")
+                val (p1, p2) = agenticAiUseCases.compareProducts(products, name1, name2)
+                val result = listOfNotNull(p1, p2)
+                val text = if (p1 == null || p2 == null) "One or both products not found"
                 else buildCompareText(p1, p2)
                 Pair(text, result)
             }
 
             "get_categories" -> {
-                val cats = useCases.getCategories(products)
+                val cats = agenticAiUseCases.getCategories(products)
                 Pair("Available categories: ${cats.joinToString(", ")}", emptyList())
             }
+
             "add_to_cart" -> {
                 val productName = args.optString("product_name", "")
-                val product     = products.firstOrNull {
+                val product = products.firstOrNull {
                     it.name.contains(productName, ignoreCase = true)
                 }
                 if (product == null) {
@@ -320,9 +361,12 @@ class GroqAgentClient @Inject constructor(
                         imageUrl = product.imageUrl,
                         quantity = 1
                     )
-                    useCases.addToCart(cartItem).fold(
+                    cartUseCase.addToCart(cartItem).fold(
                         onSuccess = {
-                            Pair("${product.name} (${product.price} SEK) added to cart ✓", listOf(product))
+                            Pair(
+                                "${product.name} (${product.price} SEK) added to cart ✓",
+                                listOf(product)
+                            )
                         },
                         onFailure = { e ->
                             Pair("Failed to add to cart: ${e.message}", emptyList())
@@ -333,7 +377,7 @@ class GroqAgentClient @Inject constructor(
 
             "remove_from_cart" -> {
                 val productName = args.optString("product_name", "")
-                useCases.getCart().fold(
+                cartUseCase.getCart().fold(
                     onSuccess = { cartItems ->
                         val item = cartItems.firstOrNull {
                             it.name.contains(productName, ignoreCase = true)
@@ -341,9 +385,19 @@ class GroqAgentClient @Inject constructor(
                         if (item == null) {
                             Pair("'$productName' not found in your cart.", emptyList())
                         } else {
-                            useCases.removeFromCart(item.id).fold(
-                                onSuccess = { Pair("${item.name} removed from cart ✓", emptyList()) },
-                                onFailure = { e -> Pair("Failed to remove: ${e.message}", emptyList()) }
+                            cartUseCase.removeFromCart(item.id).fold(
+                                onSuccess = {
+                                    Pair(
+                                        "${item.name} removed from cart ✓",
+                                        emptyList()
+                                    )
+                                },
+                                onFailure = { e ->
+                                    Pair(
+                                        "Failed to remove: ${e.message}",
+                                        emptyList()
+                                    )
+                                }
                             )
                         }
                     },
@@ -352,13 +406,13 @@ class GroqAgentClient @Inject constructor(
             }
 
             "view_cart" -> {
-                useCases.getCart().fold(
+                cartUseCase.getCart().fold(
                     onSuccess = { cartItems ->
                         if (cartItems.isEmpty()) {
                             Pair("Your cart is empty.", emptyList())
                         } else {
                             val total = cartItems.sumOf { it.price * it.quantity }
-                            val text  = buildString {
+                            val text = buildString {
                                 appendLine("Cart (${cartItems.size} item${if (cartItems.size > 1) "s" else ""}):")
                                 cartItems.forEach {
                                     appendLine("• ${it.name} x${it.quantity} — ${it.price * it.quantity} SEK")
@@ -366,12 +420,17 @@ class GroqAgentClient @Inject constructor(
                                 append("Total: $total SEK")
                             }
                             val asProducts = cartItems.map { cartItem ->
-                                products.firstOrNull { it.name.equals(cartItem.name, ignoreCase = true) }
+                                products.firstOrNull {
+                                    it.name.equals(
+                                        cartItem.name,
+                                        ignoreCase = true
+                                    )
+                                }
                                     ?: Product(
-                                        id       = cartItem.id,
-                                        name     = cartItem.name,
+                                        id = cartItem.id,
+                                        name = cartItem.name,
                                         category = cartItem.category,
-                                        price    = cartItem.price,
+                                        price = cartItem.price,
                                         imageUrl = cartItem.imageUrl
                                     )
                             }
@@ -383,20 +442,20 @@ class GroqAgentClient @Inject constructor(
             }
 
             "clear_cart" -> {
-                useCases.clearCart().fold(
+                cartUseCase.clearCart().fold(
                     onSuccess = { Pair("Cart cleared ✓", emptyList()) },
                     onFailure = { e -> Pair("Failed to clear cart: ${e.message}", emptyList()) }
                 )
             }
 
             "place_order" -> {
-                useCases.getCart().fold(
+                cartUseCase.getCart().fold(
                     onSuccess = { cartItems ->
                         if (cartItems.isEmpty()) {
                             Pair("Your cart is empty — nothing to order.", emptyList())
                         } else {
                             val total = cartItems.sumOf { it.price * it.quantity }
-                            useCases.placeOrder(cartItems).fold(
+                            cartUseCase.placeOrder(cartItems).fold(
                                 onSuccess = { orderId ->
                                     Pair(
                                         "Order placed! 🎉\n" +
@@ -407,7 +466,12 @@ class GroqAgentClient @Inject constructor(
                                         emptyList()
                                     )
                                 },
-                                onFailure = { e -> Pair("Failed to place order: ${e.message}", emptyList()) }
+                                onFailure = { e ->
+                                    Pair(
+                                        "Failed to place order: ${e.message}",
+                                        emptyList()
+                                    )
+                                }
                             )
                         }
                     },
@@ -455,16 +519,16 @@ class GroqAgentClient @Inject constructor(
                     }
                 }
 
-                var finalProducts   = emptyList<Product>()
-                var lastText        = "Sorry, I could not understand your request. Please try rephrasing."
+                var finalProducts = emptyList<Product>()
+                var lastText = "Sorry, I could not understand your request. Please try rephrasing."
 
                 for (i in 0 until 6) {
                     val body = JSONObject().apply {
-                        put("model",       model)
+                        put("model", model)
                         put("messages", messages)
-                        put("tools",       buildTools())
+                        put("tools", buildTools())
                         put("tool_choice", "auto")
-                        put("max_tokens",  1024)
+                        put("max_tokens", 1024)
                     }.toString()
 
                     val request = Request.Builder()
@@ -474,9 +538,9 @@ class GroqAgentClient @Inject constructor(
                         .addHeader("Content-Type", "application/json")
                         .build()
 
-                    val response     = http.newCall(request).execute()
+                    val response = http.newCall(request).execute()
                     val responseText = response.body.string()
-                    val json         = JSONObject(responseText)
+                    val json = JSONObject(responseText)
 
                     if (!response.isSuccessful) {
                         throw Exception(
@@ -485,8 +549,8 @@ class GroqAgentClient @Inject constructor(
                         )
                     }
 
-                    val choice       = json.getJSONArray("choices").getJSONObject(0)
-                    val message      = choice.getJSONObject("message")
+                    val choice = json.getJSONArray("choices").getJSONObject(0)
+                    val message = choice.getJSONObject("message")
                     val finishReason = choice.getString("finish_reason")
 
                     messages.put(message)
@@ -502,18 +566,24 @@ class GroqAgentClient @Inject constructor(
                             val toolCalls = message.optJSONArray("tool_calls") ?: continue
 
                             for (t in 0 until toolCalls.length()) {
-                                val call     = toolCalls.getJSONObject(t)
-                                val toolId   = call.getString("id")
+                                val call = toolCalls.getJSONObject(t)
+                                val toolId = call.getString("id")
                                 val toolName = call.getJSONObject("function").getString("name")
                                 val toolArgs = try {
-                                    JSONObject(call.getJSONObject("function").getString("arguments"))
+                                    JSONObject(
+                                        call.getJSONObject("function").getString("arguments")
+                                    )
                                 } catch (_: Exception) {
                                     JSONObject()
                                 }
 
                                 Log.d("GroqAgent", "Calling tool: $toolName with $toolArgs")
 
-                                val (result, resultProducts) = executeTool(toolName, toolArgs, products)
+                                val (result, resultProducts) = executeTool(
+                                    toolName,
+                                    toolArgs,
+                                    products
+                                )
                                 if (resultProducts.isNotEmpty()) finalProducts = resultProducts
 
                                 messages.put(JSONObject().apply {

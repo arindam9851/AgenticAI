@@ -1,4 +1,4 @@
-package com.example.agenticai.domain.usecase
+package com.example.agenticai.domain.usecase.agentic_ai_usecase
 
 import jakarta.inject.Inject
 
@@ -12,13 +12,5 @@ data class AgenticAIUseCases@Inject constructor(
     val sortByPrice: SortByPriceUseCase,
     val compareProducts: CompareProductsUseCase,
     val getCategories: GetCategoriesUseCase,
-    //Cart
-    val getCart: GetCartUseCase,
-    val addToCart: AddToCartUseCase,
-    val removeFromCart: RemoveFromCartUseCase,
-    val updateQty: UpdateCartQtyUseCase,
-    val clearCart: ClearCartUseCase,
-    val placeOrder: PlaceOrderUseCase,
-    //Order
-    val getOrders: GetOrdersUseCase
+
 )
