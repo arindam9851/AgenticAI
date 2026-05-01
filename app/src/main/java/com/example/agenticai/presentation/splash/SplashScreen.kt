@@ -35,14 +35,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SplashScreen(
-    onNavigateToChat: () -> Unit,
+    onNavigateToDashBoard: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(Unit) {
         launch {
             viewModel.effect.collectLatest { effect ->
                 when (effect) {
-                    SplashContract.Effect.NavigateToChat -> onNavigateToChat()
+                    SplashContract.Effect.NavigateToChat -> onNavigateToDashBoard()
                 }
             }
         }

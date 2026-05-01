@@ -72,7 +72,7 @@ dependencies {
 
     // Network
     implementation(libs.okhttp)
-
+    implementation(libs.logging.interceptor)
     // Image loading
     implementation(libs.coil.compose)
 
@@ -83,4 +83,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     //Navigation
     implementation(libs.androidx.navigation.compose)
+
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+
+
 }

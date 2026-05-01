@@ -3,6 +3,8 @@ package com.example.agenticai.domain.repository
 import com.example.agenticai.domain.model.Product
 import com.example.agenticai.domain.model.CartItem
 import com.example.agenticai.domain.model.Order
+import retrofit2.http.Body
+import retrofit2.http.POST
 
 interface ProductRepository {
     suspend fun getAllProducts(): Result<List<Product>>
@@ -24,3 +26,12 @@ interface CartRepository {
 interface OrderRepository {
     suspend fun getOrders(): Result<List<Order>>
 }
+interface AuthApi {
+
+    @POST("refresh")
+    suspend fun refreshToken(
+        @Body request: RefreshRequest
+    ): RefreshResponse
+}
+data class RefreshRequest(val refreshToken: String)
+data class RefreshResponse(val accessToken: String)
